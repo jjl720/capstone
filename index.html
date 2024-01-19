@@ -90,7 +90,7 @@ if (sty == 0) {
 } else {
     return React.createElement(
         "foreignObject",
-        { width: (d.x1 - d.x0) * 2, height: (d.y1 - d.y0) * 2 },
+        { width: (d.x1 - d.x0) * 5, height: (d.y1 - d.y0) * 5 },
         React.createElement(
             "div",
             null,
@@ -249,7 +249,7 @@ return React.createElement(
                                     onMouseOver: function onMouseOver() {
                                         return mouseOver(ind);
                                     }, onMouseOut: mouseOut },
-                                React.createElement("rect", { width: (ind.x1 - ind.x0) * 2, height: (ind.y1 - ind.y0) * 2, stroke: "none",
+                                React.createElement("rect", { width: (ind.x1 - ind.x0) * 5, height: (ind.y1 - ind.y0) * 5, stroke: "none",
                                     fill: color(ind.parent.data.group[0][attr2])
                                 }),
                                 React.createElement(TreeMapText, { d: ind, sty: 1 })
