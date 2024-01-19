@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Project Futures Exchange Shanghai Page</title>
+        <script src="https://d3js.org/d3.v6.min.js"></script>
+        <script src="https://d3js.org/d3-path.v2.min.js"></script>
+        <script src="https://d3js.org/d3-shape.v2.min.js"></script>
+        <script src="https://d3js.org/topojson.v1.min.js"></script>
+        <script src="https://d3js.org/d3-array.v2.min.js"></script>
+        <script src="https://d3js.org/d3-geo.v2.min.js"></script>
+        <script src="https://d3js.org/d3-geo-projection.v3.min.js"></script>
+        <script src="https://unpkg.com/react/umd/react.development.js"></script>
+        <script src="https://unpkg.com/react-dom/umd/react-dom.development.js"></script>
+        <script src="https://unpkg.com/babel-standalone/babel.js"></script>
+        <link rel="stylesheet" href="styles.css" > 
+    </head>
+    <body style=" background: rgb(53, 50, 50);">
+        <h1 style="color:rgb(231, 28, 28)">Shanghai Futures Exchange (SHFE)</h1>
+        <div id="root"></div>
+        <script type='text/babel'>
+
+            const margin = { top: 20, right: 30, bottom: 180, left: 80, gap: 50 };
+            const csvUrl = 'futures_data.csv'
+            
+            function useData(csvPath){
+                const [dataAll, setData] = React.useState(null);
+                React.useEffect(() => {
+                    d3.csv(csvPath).then(data => {
+                        data.forEach(d => {
+                            d.sharpe = +d.Sharpe;
+                            d.low = +d.low;
+                            d.mean = +d.mean;
+                            d.max = +d.max;
+                            d.mv = +d.volume;
+                            d.tv = +d.tradingvolume;
+                        });
+                        setData(data);
+                    });
+                }, []);
+                return dataAll;
+            }
+
+            function YAxis(props) {
+                const {sys, height, type} = props;
+                const ticks = sys.ticks(10);
+                const judge = type == 'scatter';
+                const judge2 = type == 'bar2';
+                const judge3 = type == 'price';
+                const judge4 = type == 'sharpe';
+                const color1 = d => d > 2 ? 'red' : 'rgb(28, 231, 197)';
+                if (judge) {
+                    return <g>
+                        <line y2={height} stroke ={`white`} />
+                        <line x1={-600} y1 = {-50} x2= {500} y2={-50} stroke ={`purple`} />
+                        <text style={{ font: 'sans-serif', fontSize: '14px'}}  
+                                transform={`translate(5, -15)`} y={20} fill={'white'}>
+                                    {'Sharpe Ratio (yearly)'} 
+                        </text>
+                        {ticks.map( tickValue => {
+                            return <g key={tickValue} transform={`translate(-10, ${sys(tickValue)})`}>
+                                    <line x2={10} stroke={"white"} />
+                                    <text style={{ textAnchor:'end', fontSize:'12px'}} fill={color1(tickValue)}>
+                                    {tickValue} 
+                                    </text>
+                                </g> })}
+                    </g>
+                }
+                if (judge2) {
+                    
+                    return <g  transform={`translate(470, 0)`}>
+                        <line y2={height} stroke ={`white`} />
+                        <text style={{ font: 'sans-serif', textAnchor:'middle', fontSize:'16px'}} fill={'white'} x = {-770} y={-380}>
+                                    Yearly Overview
+                        </text>
+                        <text style={{ font: 'sans-serif', textAnchor:'middle', fontSize:'16px'}} fill={'white'} x = {-180} y={-380}>
+                                    Monthly Details
+                        </text>
+                        <text style={{ font: 'sans-serif', fontSize: '14px'}} 
+                                transform={`translate(-130, -15)`} y={20} fill={'white'}>
+                                    {'trading volume (%)'} 
+                        </text>
+                        {ticks.map( tickValue => {
+                            return <g key={tickValue} transform={`translate(0, ${sys(tickValue)})`}>
+                                    <line x2={10} stroke={"white"} />
+                                    <text style={{ textAnchor:'end', fontSize:'12px'}} transform={`translate(32, 0)`} fill={'white'}>
+                                    {tickValue} 
+                                    </text>
+                                </g> })}
+                    </g>
+                }
+                if (judge4) {
+                    return <g transform={`translate(450, 0)`}>
+                        <line y2={height} stroke ={`white`} />
+                        <text style={{ font: 'sans-serif', fontSize: '14px'}}  
+                                transform={`translate(-50, -15)`} y={20} fill={'white'}>
+                                    {'Sharpe'} 
+                        </text>
+                        {ticks.map( tickValue => {
+                            return <g key={tickValue} transform={`translate(0, ${sys(tickValue)})`}>
+                                    <line x2={10} stroke={"white"} />
+                                    <text style={{ textAnchor:'end', fontSize:'12px'}} transform={`translate(32, 0)`} fill={'white'}>
+                                    {tickValue} 
+                                    </text>
+                                </g> })}
+                    </g>
+                }
+                if (judge3) {
+                    return <g>
+                        <line y2={height} stroke ={`white`} />
+                        <text style={{ font: 'sans-serif', fontSize: '14px'}}  
+                                transform={`translate(5, -15)`} y={20} fill={'white'}>
+                                    {'Price Curve'} 
+                        </text>
+                        {ticks.map( tickValue => {
+                            return <g key={tickValue} transform={`translate(-10, ${sys(tickValue)})`}>
+                                    <line x2={10} stroke={"white"} />
+                                    <text style={{ textAnchor:'end', fontSize:'12px'}} fill={'white'}>
+                                    {tickValue} 
+                                    </text>
+                                </g> })}
+                    </g>
+                }
+                else {
+                    return <g>
+                        <line y2={height} stroke ={`white`} />
+                        <text style={{ font: 'sans-serif', fontSize: '14px'} }  fill={'white'}
+                                transform={`translate(5, -15)`} y={20}>
+                                    {'market volume (%)'} 
+                        </text>
+                        {ticks.map( tickValue => {
+                            return <g key={tickValue} transform={`translate(-10, ${sys(tickValue)})`}>
+                                    <line x2={10} stroke={"white"} />
+                                    <text style={{ textAnchor:'end', fontSize:'12px'}} fill={'white'}>
+                                    {tickValue} 
+                                    </text>
+                                </g> })}
+                    </g>
+                }
+            }
+
+            function XAxis(props) {
+                const {data, sxs, width, height, type} = props;
+                const judge = type == 'scatter';
+                const judge2 = type == 'price';
+                if (judge) {
+                    const ticks = sxs.ticks(10);
+                    return <g>
+                        <line y1={height} x2={width} y2={height} stroke ={"white"} />
+                        <text style={{ font: 'sans-serif', fontSize: '14px' }}  
+                            transform={`translate(360, 270)`} y={20} fill={'white'}>
+                                    {'Trading Volume (1e3)'} 
+                        </text>
+                        {ticks.map( tickValue => {
+                            return <g key={tickValue} transform={`translate(${sxs(tickValue)}, ${height})`}>
+                                    <line y2={5} stroke={"white"} />
+                                    <text style={{ textAnchor:'middle', fontSize:'12px', color:'white'}} fill={'white'} y={20}>
+                                    {tickValue} 
+                                    </text>
+                                </g>
+                            })}
+                    </g>
+                }
+                if (judge2) {
+                    return <g>
+                        <line y1={height} x2={width} y2={height} stroke ={"white"} />
+                        {data.map(d => {
+                        return <text style={{ font: 'sans-serif', fontSize: '12px' }} fill={'white'} 
+                            transform={`translate(${sxs(d.month)}, 293)`} y={20}>
+                                    {d.month} 
+                        </text>
+                        })}
+                    </g>
+                }
+                else{
+                    return <g>
+                        <line y1={height} x2={width} y2={height} stroke ={"white"} />
+                        {data.map(d => {
+                        return <text style={{ font: 'sans-serif', fontSize: '12px' }}  fill={'white'}
+                            transform={`translate(${sxs(d.Product)}, 293)`} y={20}>
+                                    {d.Product} 
+                        </text>
+                        })}
+                    </g>
+                }
+            }
+            
+            function Points(props) {
+                console.log(props.selected)
+                const {data, sxs, sys} = props;
+                console.log(1);
+                console.log(data);
+                
+                // console.log(data.filter(function(d){return d.month == 'May' & d.Product == 'York St'}))
+                // function onMouseEnter(d){
+                //     props.setselected(d)
+                // }
+                // function onMouseOut(){
+                //     props.se
+                // }
+
+                const mouseOver = d =>{
+                    props.setselected(d.Product);
+                    props.settop(sys(d.sharpe));
+                    props.setleft(sxs(d.tv/1000));
+                    props.setdata1(d.sharpe);
+                    props.setdata2(d.tv);
+                }
+                const mouseOut = () =>{
+                    props.setselected(null);
+                    props.settop(null);
+                }
+
+                const color = d => d.tv === 0 ? "yellow" 
+                        :d.Product === props.selected ? "steelblue" 
+                        :d.sharpe > 2? 'red':'green';
+                const radius = d => d.Product === props.selected ? 7 : 5;
+                const opa = d => d === null ? 0 : 0.8;
+                const opa2 = d => d === null ? 0 : 0.8;
+
+                const selecteddata = data.filter(d => d.Product===props.selected)
+                console.log('works?')
+                console.log(selecteddata[0])
+                if(selecteddata[0]){
+                    props.settop(sys(selecteddata[0].sharpe)-50);
+                    props.setleft(sxs(selecteddata[0].tv/1000)+20);}
+
+                return <g>
+                    
+
+                    {data.map(d => {
+                        return <circle key={d.Product} 
+                                        cx={sxs(d.tv/1000)} 
+                                        cy={sys(d.sharpe)} 
+                                        r={radius(d)} 
+                                        fill={color(d)} 
+                                        stroke={'white'}
+                                        onMouseOver={() => {mouseOver(d)}}
+                                        style = {{transition:"1s"}}
+                                        />;
+                    })}
+                    {data.filter(function(d){return d.Product == props.selected}).map(d => {
+                        return <circle key={d.Product} 
+                                        cx={sxs(d.tv/1000)} 
+                                        cy={sys(d.sharpe)} 
+                                        r={radius(d)} 
+                                        fill={color(d)} 
+                                        stroke={'white'}
+                                        onMouseOut={mouseOut}
+                                        style = {{transition:"100s"}}
+                                        />;
+                    })}
+                    <rect  x = {props.left} y={props.top} opacity={opa(props.selected)}
+                                    width={180} height = {90} fill={'lightblue'}/>
+                    
+                    <text style={{ font: 'sans-serif', fontSize: '12px' }}  
+                            transform={`translate(${props.left}, ${props.top})`} x={5} y={30}
+                            opacity={opa2(props.selected)}>
+                                    {props.selected}  
+                    </text>
+                    <text style={{ font: 'sans-serif', fontSize: '12px' }}  
+                            transform={`translate(${props.left}, ${props.top})`} x={25} y={50}
+                            opacity={opa2(props.selected)}>
+                                    {"Â· Trading Volume: "}  
+                                    {Math.round(props.data2)}  
+                    </text>
+                    <text style={{ font: 'sans-serif', fontSize: '12px' }}  
+                            transform={`translate(${props.left}, ${props.top})`} x={25} y={70}
+                            opacity={opa2(props.selected)}>
+                                    {"Â· Sharpe Ratio: "}  
+                                    {Math.floor(props.data1 * 100) / 100}  
+                    </text>
+                </g>
+            }
+
+            
+            function OverPoints(props) {
+                console.log(props.selected)
+                const {data, sxs, sys} = props;
+                console.log(1);
+                console.log(data);
+                
+                // console.log(data.filter(function(d){return d.month == 'May' & d.Product == 'York St'}))
+                // function onMouseEnter(d){
+                //     props.setselected(d)
+                // }
+                // function onMouseOut(){
+                //     props.se
+                // }
+
+                const mouseOver = d =>{
+                    props.setselected(d.Product);
+                    props.settop(sys(d.maxi));
+                    props.setleft(sxs(d.Product));
+                    props.setdata1(d.sharpe);
+                    props.setdata2(d.tv);
+                }
+                const mouseOut = () =>{
+                    props.setselected(null);
+                    props.settop(null);
+                }
+
+                const color = d => d.tv === 0 ? "yellow" 
+                        :d.Product === props.selected ? "steelblue" 
+                        :d.sharpe > 2? 'red':'green';
+                const radius = d => d.Product === props.selected ? 10 : 5;
+                const opa = d => d === null ? 0 : 0.8;
+                const opa2 = d => d === null ? 0 : 0.8;
+
+                const selecteddata = data.filter(d => d.Product===props.selected)
+                console.log('works?')
+                console.log(selecteddata[0])
+                if(selecteddata[0]){
+                    props.settop(sys(selecteddata[0].maxi)-50);
+                    props.setleft(sxs(selecteddata[0].Product)+20);}
+                
+                const sharp = d => d? d.sharpe: 0;
+                const maxi = d => d? d.maxi: 0;
+                const mini = d => d? d.mini: 0;
+
+
+                return <g>
+
+                    {data.map(d => {
+                        return <circle key={d.Product} 
+                                        cx={sxs(d.Product)} 
+                                        cy={sys(d.sharpe)} 
+                                        r={radius(d)} 
+                                        fill={color(d)} 
+                                        stroke={'white'}
+                                        onMouseOver={() => {mouseOver(d)}}
+                                        style = {{transition:"1s"}}
+                                        />;
+                    })}
+                    {data.filter(function(d){return d.Product == props.selected}).map(d => {
+                        return <circle key={d.Product} 
+                                        cx={sxs(d.Product)} 
+                                        cy={sys(d.sharpe)} 
+                                        r={radius(d)} 
+                                        fill={color(d)} 
+                                        stroke={'white'}
+                                        onMouseOut={mouseOut}
+                                        style = {{transition:"100s"}}
+                                        />;
+                    })}
+                    {data.filter(function(d){return d.Product == props.selected}).map(d => {
+                        return <circle key={d.Product} 
+                                        cx={sxs(d.Product)} 
+                                        cy={sys(d.mini)} 
+                                        r={radius(d)} 
+                                        fill={color(d)} 
+                                        stroke={'white'}
+                                        onMouseOut={mouseOut}
+                                        style = {{transition:"100s"}}
+                                        />;
+                    })}
+                    {data.filter(function(d){return d.Product == props.selected}).map(d => {
+                        return <circle key={d.Product} 
+                                        cx={sxs(d.Product)} 
+                                        cy={sys(d.maxi)} 
+                                        r={radius(d)} 
+                                        fill={color(d)} 
+                                        stroke={'white'}
+                                        onMouseOut={mouseOut}
+                                        style = {{transition:"100s"}}
+                                        />;
+                    })}
+                    <rect  x = {props.left} y={props.top} opacity={opa(props.selected)}
+                                    width={180} height = {110} fill={'lightblue'}/>
+                    
+                    <text style={{ font: 'sans-serif', fontSize: '12px' }}  
+                            transform={`translate(${props.left}, ${props.top})`} x={5} y={30}
+                            opacity={opa2(props.selected)}>
+                                    {props.selected}  
+                    </text>
+                    <text style={{ font: 'sans-serif', fontSize: '12px' }}  
+                            transform={`translate(${props.left}, ${props.top})`} x={25} y={50}
+                            opacity={opa2(props.selected)}>
+                                    {"Â· Max Sharpe Ratio: "}  
+                                    {Math.floor(maxi(selecteddata[0])*100)/100}  
+                    </text>
+                    <text style={{ font: 'sans-serif', fontSize: '12px' }}  
+                            transform={`translate(${props.left}, ${props.top})`} x={25} y={70}
+                            opacity={opa2(props.selected)}>
+                                    {"Â· Min Sharpe Ratio: "}  
+                                    {Math.floor(mini(selecteddata[0])*100)/100}  
+                    </text>
+                    <text style={{ font: 'sans-serif', fontSize: '12px' }}  
+                            transform={`translate(${props.left}, ${props.top})`} x={25} y={90}
+                            opacity={opa2(props.selected)}>
+                                    {"Â· Avg Sharpe Ratio: "}  
+                                    {Math.floor(sharp(selecteddata[0]) * 100) / 100}  
+                    </text>
+                </g>
+            }
+
+            function ScatterPlot(props) {
+                const data = props.data;
+                if (!data) {return <pre>Loading...</pre>;};
+                const WIDTH = 600;
+                const HEIGHT = 800;
+                const height = (HEIGHT - margin.top - margin.bottom)/2;
+                const width = WIDTH - margin.left - margin.right - 20;
+                const sxs = d3.scaleLinear()
+                                .range([0, width])
+                                .domain([0, d3.max(data, (d)=> d.tv/1000)])
+                                .nice();
+                console.log(d3.max(data, (d)=> d.sharpe))
+                const sys = d3.scaleLinear()
+                                .range([height, 0])
+                                .domain([0, d3.max(data, (d)=> d.sharpe)])
+                                .nice();
+                
+                return <g transform={`translate(${margin.left+550+props.addmore}, ${margin.top+50})`}>
+                    <Points data={props.data} sxs={sxs} sys={sys} color={'steelblue'}
+                            selected={props.selected} setselected={props.setselected}
+                            month={props.month}
+                            top={props.top} settop={props.settop}
+                            left={props.left} setleft={props.setleft}
+                            data1={props.data1} setdata1={props.setdata1}
+                            data2={props.data2} setdata2={props.setdata2}
+                            data3={props.data3} setdata3={props.setdata3}/>
+                    <YAxis sys={sys} width={width} height={height} type={'scatter'}/>
+                    <XAxis sxs={sxs} width={width} height={height} type={'scatter'}/>
+                </g>
+            }
+
+            function OverScatterPlot(props) {
+                const data = props.data;
+                if (!data) {return <pre>Loading...</pre>;};
+                const WIDTH = 600;
+                const HEIGHT = 800;
+                const height = (HEIGHT - margin.top - margin.bottom)/2;
+                const width = WIDTH - margin.left - margin.right - 20;
+                const sxs = d3.scaleBand()
+                                .range([0, width])
+                                .domain(data.map(d => {return d.Product}));
+                const sys = d3.scaleLinear()
+                                .range([height, 0])
+                                .domain([0, d3.max(data, (d)=> d.maxi)])
+                                .nice();
+                console.log('whats wrong')
+                console.log(data)
+                
+                return <g transform={`translate(${margin.left+550+props.addmore}, ${margin.top+50})`}>
+                    <OverPoints data={props.data} sxs={sxs} sys={sys} color={'steelblue'}
+                            selected={props.selected} setselected={props.setselected}
+                            month={props.month}
+                            top={props.top1} settop={props.settop1}
+                            left={props.left1} setleft={props.setleft1}
+                            data1={props.data1} setdata1={props.setdata1}
+                            data2={props.data2} setdata2={props.setdata2}
+                            data3={props.data3} setdata3={props.setdata3}/>
+                    <YAxis sys={sys} width={width} height={height} type={'scatter'}/>
+                    <XAxis data={props.data} sxs={sxs} width={width} height={height} type={'bar'}/>
+                </g>
+            }
+
+
+            function Bars(props) {
+                const [selected, setselected] = React.useState(null)
+                const {data, sxs, sys, bxs, bys, by2} = props;
+                
+                // function onMouseEnter(d){
+                //     props.setselected(d)
+                // }
+                // function onMouseOut(){
+                //     props.se
+                // }
+
+                const mouseOver = d =>{
+                    props.setselected(d.Product);
+                    props.settop(sys(d.sharpe));
+                    props.setleft(sxs(d.tv/1000));
+                    props.setdata1(d.sharpe);
+                    props.setdata2(d.tv);
+                }
+                const mouseOut = () =>{
+                    props.setselected(null);
+                    props.settop(null);
+                }
+
+                const color = d => d.Product === props.selected ? "steelblue" : "yellow";
+                const color2 = d => d.Product === props.selected ? "steelblue" : 
+                d.mv/maxmv*100 > d.tv/maxtv*100 ? "green" : "red";
+
+                const maxtv = d3.max(data, (d)=> d.tv)
+                const maxmv = d3.max(data, (d)=> d.mv)
+                return <g>
+                    {data.map(d => {
+                        return <rect key={d.Product} x={bxs(d.Product)} y={bys(d.mv/maxmv*100)} 
+                                        width={10} height={300-bys(d.mv/maxmv*100)}
+                                        fill={color(d)} stroke={'white'}
+                                        onMouseOver={() => {mouseOver(d)}}
+                                        onMouseOut={mouseOut}/>
+                    })}
+                    {data.map(d => {
+                        return <rect key={d.Product} x={bxs(d.Product)+10} y={by2(d.tv/maxtv*100)} 
+                                        width={10} height={300-by2(d.tv/maxtv*100)}
+                                        fill={color2(d)} stroke={'white'}
+                                        onMouseOver={() => {mouseOver(d)}}
+                                        onMouseOut={mouseOut}/>
+                    })}
+                </g>
+            }
+
+            function BarChart(props) {
+                const data = props.data;
+                if (!data) {return <pre>Loading...</pre>;};
+                const WIDTH = 600;
+                const HEIGHT = 800;
+                const height = (HEIGHT - margin.top - margin.bottom)/2;
+                const width = WIDTH - margin.left - margin.right - 20;
+                const sxs = d3.scaleLinear()
+                                .range([0, width])
+                                .domain([0, d3.max(data, (d)=> d.tv/1000)])
+                                .nice();
+                const sys = d3.scaleLinear()
+                                .range([height, 0])
+                                .domain([0, d3.max(data, (d)=> d.sharpe)])
+                                .nice();
+                const bxs = d3.scaleBand()
+                                .range([0, width])
+                                .domain(data.map(d => {return d.Product}));
+                const bys = d3.scaleLinear()
+                                .range([height, 0])
+                                .domain([0,100])
+                                .nice();
+                const by2 = d3.scaleLinear()
+                                .range([height, 0])
+                                .domain([0, 100])
+                                .nice();
+                
+                return <g transform={`translate(${margin.left+550}, ${margin.top+height+100})`}>
+                    <Bars data={props.data} sxs={sxs} sys={sys} bxs={bxs} bys={bys} by2={by2}
+                    selected={props.selected} setselected={props.setselected}
+                    top={props.top} settop={props.settop}
+                            left={props.left} setleft={props.setleft}
+                            data1={props.data1} setdata1={props.setdata1}
+                            data2={props.data2} setdata2={props.setdata2}
+                            data3={props.data3} setdata3={props.setdata3}
+                    month={props.month}/>
+                    <YAxis sys={bys} width={width} height={height} type={'bar'}/>
+                    <YAxis sys={by2} width={width} height={height} type={'bar2'}/>
+                    <XAxis data={props.data} sxs={bxs} width={width} height={height} type={'bar'}/>
+                </g>
+            }
+
+            function SymmetricAreaChart(props) {
+                    const { offsetX, offsetY, data, height, width } = props;
+                    //the text needed is given in the following
+                    
+                    const xScale = d3.scaleBand()
+                        .domain(['01','02','03','04','05','06','07','08','09','10','11','12'])
+                        .range([0, width]);
+
+                    
+                    const yScale = d3.scaleLinear()
+                                        .domain([0, d3.max([d3.max(data, d => d.low),d3.max(data, d => d.max)])])
+                                        .range([height/2, 0])
+                                        .nice();
+                    const p1 = d3.area()
+                                .x(d => xScale(d.month))
+                                .y0(height/2)
+                                .y1(d => yScale(d.low))
+                                .curve(d3.curveBasis)
+                                (data);
+
+                    const p2 = d3.area()
+                                .x(d => xScale(d.month))
+                                .y0(height/2)
+                                .y1(d => yScale(-d.max))
+                                .curve(d3.curveBasis)
+                                (data);
+
+                    const p3 = d3.area()
+                                .x(d => xScale(d.month))
+                                .y0(height/2)
+                                .y1(d => yScale(d.mean))
+                                .curve(d3.curveBasis)
+                                (data);
+
+                    console.log('symm')
+                    console.log(data)
+
+                    return <g transform={`translate(${600}, ${0})`} >
+
+                        <path d={p1} fill={'lightgreen'} stroke={'white'} />
+                        <path d={p3} fill={'blue'} stroke={'white'} />
+                        <path d={p2} fill={'red'} stroke={'white'} />
+                        
+
+                        {<line y2={height} stroke='white' transform={`translate(0, 0)`} /> }
+
+                        {xScale.domain().map(tickValue =>
+                                <g key={tickValue+'B'} transform={`translate(${xScale(tickValue)-10}, 30)`}>
+                                    <line y2={10} transform={`translate(10, ${height-22})`} stroke='white'/>
+                                    <text style={{textAnchor: 'start', fontSize:'12px' }} y={height} 
+                                            transform={`rotate(0, 0, ${height+3})`}> {tickValue}
+                                    </text>
+                                </g>
+                            )}
+                        
+                        {yScale.ticks(2).map(tickValue => 
+                            <g key={tickValue} transform={`translate(-10, ${yScale(tickValue)})`}>
+                                <line x2={10} stroke='white' />
+                                <text style={{ textAnchor:'end', fontSize:'10px' }} >
+                                    {tickValue}
+                                </text>
+                            </g>
+                        )}
+
+                        {yScale.ticks(2).reverse().map(tickValue => 
+                            <g key={tickValue} transform={`translate(-10, ${height-yScale(tickValue)})`}>
+                                <line x2={10} stroke='white' />
+                                <text style={{ textAnchor:'end', fontSize:'10px' }} >
+                                    {tickValue}
+                                </text>
+                            </g>
+                        )}
+                        
+                        {<line x1={600} y1={height/2} x2={1000} y2={height/2} stroke='white'/>}
+
+
+                        <text style={{ textAnchor:'end', fontSize:'15px'}} transform={`translate(${width}, ${20})rotate(0)`}>
+                                {"Start"}
+                        </text>
+
+
+                        <text style={{ textAnchor:'end', fontSize:'15px'}} transform={`translate(${width*2/3}, ${-10})rotate(0)`}>
+                                {"Num. of riders over the year"}
+                        </text>
+                        
+                        
+                        <g transform={`translate(${offsetX}, ${offsetY+height/2})`}>    
+                            <text style={{ textAnchor:'end', fontSize:'15px'}} transform={`translate(${width}, ${height/2-20})rotate(0)`}>
+                                {"End"}
+                        </text>
+                        
+                        </g>
+                        </g>
+                }
+            
+            function Pathdraw(props) {
+                console.log(props.selected)
+                const {data, sxs, sys, sys2} = props;
+                console.log('really????');
+                console.log(sxs('02'));
+                
+                // console.log(data.filter(function(d){return d.month == 'May' & d.Product == 'York St'}))
+                // function onMouseEnter(d){
+                //     props.setselected(d)
+                // }
+                // function onMouseOut(){
+                //     props.se
+                // }
+
+                const mouseOver = d =>{
+                    props.setselected(d.Product);
+                    props.settop(sys(d.sharpe));
+                    props.setleft(sxs(d.tv/1000));
+                    props.setdata1(d.sharpe);
+                    props.setdata2(d.tv);
+                }
+                const mouseOut = () =>{
+                    props.setselected(null);
+                    props.settop(null);
+                }
+
+                const color = d => d.month === props.currentmonth ? 'steelblue' : 'black';
+                const color2 = d => d.month === props.currentmonth ? 'steelblue' : 'white';
+                const radius = d => d.month === props.currentmonth ? 5 : 3;
+                const opa = d => d === null ? 0 : 0.6;
+                const opa2 = d => d === null ? 0 : 0.8;
+
+                const p1 = d3.area()
+                    .x(d => sxs(d.month)+10)
+                    .y0(300)
+                    .y1(d => sys(d.max))
+                    .curve(d3.curveBasis)
+                    (data);
+
+                const p2 = d3.area()
+                    .x(d => sxs(d.month)+10)
+                    .y0(300)
+                    .y1(d => sys(d.low))
+                    .curve(d3.curveBasis)
+                    (data);
+
+                const p3 = d3.area()
+                    .x(d => sxs(d.month)+10)
+                    .y0(300)
+                    .y1(d => sys(d.mean))
+                    .curve(d3.curveBasis)
+                    (data);
+
+                return <g>
+                    <path d={p1} fill={'red'} stroke={'white'} />
+                    <path d={p3} fill={'lightgreen'} stroke={'white'} />
+                    <path d={p2} fill={'rgb(53, 50, 50)'} stroke={'white'} />
+                    {data.map(d => {
+                        return <circle key={d.Product} 
+                                        cx={sxs(d.month)+10} 
+                                        cy={sys2(d.sharpe)} 
+                                        r={radius(d)} 
+                                        fill={color2(d)} 
+                                        stroke={'white'}
+                                        onMouseOver={() => {mouseOver(d)}}
+                                        style = {{transition:"1s"}}
+                                        />;
+                    })}
+                    {data.map(d => {
+                        return <circle cx={sxs(d.month)+10} 
+                                        cy={sys(d.mean)} 
+                                        r={radius(d)} 
+                                        fill={color(d)} 
+                                        stroke={'white'}
+                                        onMouseOver={() => {mouseOver(d)}}
+                                        style = {{transition:"1s"}}
+                                        />;
+                    })}
+                </g>
+            }
+         
+            function PriceCurve(props) {
+                const data = props.data;
+                if (!data) {return <pre>Loading...</pre>;};
+                const WIDTH = 600;
+                const HEIGHT = 800;
+                const height = (HEIGHT - margin.top - margin.bottom)/2;
+                const width = WIDTH - margin.left - margin.right - 20;
+                const sxs = d3.scaleBand()
+                                .range([0, width])
+                                .domain(data.map(d => {return d.month}));
+                console.log('pricepriceprice')
+                console.log(d3.max(data, (d)=> d.sharpe))
+                const sys = d3.scaleLinear()
+                                .range([height, 0])
+                                .domain([0, d3.max(data, (d)=> d.max)])
+                                .nice();
+                const sys2 = d3.scaleLinear()
+                                .range([height, 0])
+                                .domain([0, d3.max(data, (d)=> d.sharpe)])
+                                .nice();
+                
+                if (props.selected == null){
+                    console.log('no more')
+                return (
+                    <div> 
+                    </div>
+                )   
+                }else{
+                return <g transform={`translate(${margin.left+20}, ${margin.top+height+100})`}>
+                    <Pathdraw data={props.data} sxs={sxs} sys={sys} sys2={sys2} color={'steelblue'}
+                            selected={props.selected} setselected={props.setselected}
+                            month={props.month}
+                            top={props.top} settop={props.settop}
+                            left={props.left} setleft={props.setleft}
+                            data1={props.data1} setdata1={props.setdata1}
+                            data2={props.data2} setdata2={props.setdata2}
+                            data3={props.data3} setdata3={props.setdata3}
+                            currentmonth={props.currentmonth}/>
+                    <YAxis sys={sys} width={width} height={height} type={'price'}/>
+                    <YAxis sys={sys2} width={width} height={height} type={'sharpe'}/>
+                    <XAxis data={props.data} sxs={sxs} width={width} height={height} type={'price'}/>
+                </g>
+                }
+            }
+
+            function Tooltip(props) {
+                const {d, stationYearData, left, top, height, width} = props;
+                if (props.d == null){
+                    console.log('no more')
+                return (
+                    <div> 
+                    </div>
+                )   
+                }else{
+                    console.log(stationYearData)
+                    console.log(d)
+                    console.log('here')
+                    return (
+                        <g transform={`translate(${left}, ${top})`}>
+                    <text style={{ textAnchor:'start', fontSize:'15px'}}  transform={`translate(${0}, ${-5})rotate(0)`}>{d.Product} </text>
+                    <PriceCurve data={stationYearData}
+                                            addmore={600}/>
+                </g>
+                )   
+                }
+            }
+            
+            const Charts = () => {
+                const Home_page = () => { 
+                    return <div>
+                        <a href = 'index.html' fill = 'white'>
+                        <button class = 'button'>
+                            <text style={{ textAnchor:'bottom', fontSize:'2em'}} fill = 'white' x = {"0%"} y = {"0"}>
+                                Information Vizualization Project - Shanghai
+                            </text>
+                        </button>
+                        </a>
+                        <svg width = '100%' height = '1'>
+                        <line  x2="100%" y1="100%" y2="100%" stroke = "white"/>
+                        </svg>
+                        </div>
+                }
+                var test = window.location.href;        
+                console.log(test.split('=')[1].split('-')[1]);
+                const mn = ['01','02','03','04','05','06','07','08','09','10','11','12']; 
+                const YEAR = ['2017','2018','2019','2020'];
+                const [selected, setselected] = React.useState(null)
+                const [top, settop] = React.useState(null)
+                const [left, setleft] = React.useState(null)
+                const [top1, settop1] = React.useState(null)
+                const [left1, setleft1] = React.useState(null)
+                const [data1, setdata1] = React.useState(null)
+                const [data2, setdata2] = React.useState(null)
+                const [data3, setdata3] = React.useState(null)
+                const [value, setvalue] = React.useState(4)
+                const [month, setMonth] = React.useState(mn.indexOf(test.split('=')[1].split('-')[1]));
+                const [year, setYear] = React.useState(YEAR.indexOf(test.split('=')[1].split('-')[0]));
+                let monthlist = ['Jan', 'Feb', 'Mar', 'Apr', 
+                                'May', 'Jun', 'Jul', 'Aug', 
+                                'Sep','Oct','Nov','Dec'];
+                const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                // let slider = d3.select('#slider');
+                // let slidertext = d3.select('#slidertext')
+                // slider.on("input", function(){
+                //     console.log(1)
+                //     slidertext.attr('value', month[this.value-1]);
+                // });
+                const dataAll = useData(csvUrl);
+                if (!dataAll) {
+                   return <pre>Loading...</pre>;
+                };
+                const WIDTH = 2600;
+                const HEIGHT = 800;
+                const innerHeight = HEIGHT - margin.top - margin.bottom;
+                const innerWidth = WIDTH - margin.left - margin.right; 
+
+                const data_year = dataAll.filter( d => {
+                return d.year == YEAR[year] & d.Exchange == 'SHFE';
+                });
+    
+                const data_final = data_year.filter( d => {
+                    const mn = ['01','02','03','04','05','06','07','08','09','10','11','12']; 
+                    return d.month == mn[month];
+                });
+
+
+                const changeHandlerMonth = (event) => {
+                    setMonth(event.target.value);
+                };
+                const changeHandlerYear = (event) => {
+                    setYear(event.target.value);
+                };
+                
+                const selectedPoint = dataAll.filter(d => d.Product===selected)[0];
+
+                
+                console.log(mn[month]);
+                console.log('another');
+
+                const stationYearData = data_year.filter( d=> {
+                    return d.Product == selected;
+                }); 
+                let allprod = data_final.map(d => d.Product)
+                console.log('what');
+                
+                console.log('try the average')
+                console.log(d3.mean(data_year.filter(d => d.Product==='bu'), (d) => d.sharpe))
+
+                let avgsharp = []
+                allprod.forEach(k => avgsharp.push({Product:k, 
+                    sharpe:d3.mean(data_year.filter(d => d.Product===k), (d) => d.sharpe),
+                    maxi:d3.max(data_year.filter(d => d.Product===k), (d) => d.sharpe),
+                    mini:d3.min(data_year.filter(d => d.Product===k), (d) => d.sharpe)}))
+                console.log(avgsharp)
+
+                return (
+                    <div>
+                        <div>
+                        <div class= 'years'  align = 'left'>
+                        <input key="slider" type='range' class = 'slider' list="tickmarks" min='0' max='3' value={year}  step='1' onChange={changeHandlerYear}/>
+                            <datalist id="tickmarks">
+                            <option value="0"></option>
+                            <option value="1"></option>
+                            <option value="2"></option>
+                            <option value="3"></option>
+                            </datalist>
+                        <input key="monthText" class='labelinput' type="text" value={YEAR[year]} readOnly/>
+                        </div>
+                        </div>
+                        
+                        <div class= 'month' align = 'center'>
+                        <input key="slider" type='range' list="tick" class = 'slider'  min='0' max='11' value={month} step='1' onChange={changeHandlerMonth}/>
+                        <datalist id="tick">
+                            <option value="0"></option>
+                            <option value="1"></option>
+                            <option value="2"></option>
+                            <option value="3"></option>
+                            <option value="4"></option>
+                            <option value="5"></option>
+                            <option value="6"></option>
+                            <option value="7"></option>
+                            <option value="8"></option>
+                            <option value="9"></option>
+                            <option value="10"></option>
+                            <option value="11"></option>
+                            <option value="12"></option>
+                            </datalist>
+                        <input key="monthText" class='labelinput' type="text" value={MONTH[month]} readOnly/>
+                        </div>
+
+                        <svg width={WIDTH} height={HEIGHT}>
+                            <ScatterPlot selected={selected} setselected={setselected}
+                                            top={top} settop={settop}
+                                            left={left} setleft={setleft}
+                                            data1={data1} setdata1={setdata1}
+                                            data2={data2} setdata2={setdata2}
+                                            data3={data3} setdata3={setdata3}
+                                            data={data_final} 
+                                            addmore={0}/>
+                            <OverScatterPlot selected={selected} setselected={setselected}
+                                            top1={top1} settop1={settop1}
+                                            left1={left1} setleft1={setleft1}
+                                            data1={data1} setdata1={setdata1}
+                                            data2={data2} setdata2={setdata2}
+                                            data3={data3} setdata3={setdata3}
+                                            data={avgsharp} data_year={data_year}
+                                            addmore={-530}/>
+                            <BarChart selected={selected} setselected={setselected}
+                                            top={top} settop={settop}
+                                            left={left} setleft={setleft}
+                                            data1={data1} setdata1={setdata1}
+                                            data2={data2} setdata2={setdata2}
+                                            data3={data3} setdata3={setdata3}
+                                            data={data_final}/>
+                            <PriceCurve selected={selected} setselected={setselected}
+                                            top={top} settop={settop}
+                                            left={left} setleft={setleft}
+                                            data1={data1} setdata1={setdata1}
+                                            data2={data2} setdata2={setdata2}
+                                            data3={data3} setdata3={setdata3}
+                                            data={stationYearData} currentmonth={mn[month]}
+                                            addmore={600}/>
+                        </svg>
+                        <div>
+                        <a href = 'index.html' fill = 'white'>
+                        <button class = 'button'>
+                            <text style={{ textAnchor:'bottom', fontSize:'2em'}} fill = 'white' x = {"0%"} y = {"0"}>
+                                Home Page
+                            </text>
+                        </button>
+                        </a>
+                        <svg width = '100%' height = '1'>
+                        <line  x2="100%" y1="100%" y2="100%" stroke = "white"/>
+                        </svg>
+                        </div>
+                    </div>
+                )   
+            }
+            const rootElement = document.getElementById('root');
+
+           ReactDOM.render( <Charts />, document.getElementById('root'));
+        </script> 
+    </body>
+</html>
